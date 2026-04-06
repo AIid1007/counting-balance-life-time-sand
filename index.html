@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Life Sand — Time Audit</title>
+<meta name="description" content="See exactly how your time is draining — second by second. A visceral life audit.">
+<meta property="og:title" content="Life Sand — Time Audit">
+<meta property="og:description" content="See exactly how your time is draining — in real time.">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='80'>⏳</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;height:100%}
+:root{
+  --bg:#070509;
+  --surface:#0f0b13;
+  --surface2:#17131c;
+  --text:#f0e4d0;
+  --dim:#5a4a38;
+  --dim2:#8a7a65;
+  --border:rgba(255,255,255,.07);
+  --amber:#c87834;
+  --amber-l:#e09848;
+  --amber-d:#6a3c0a;
+  --red:#8a2020;
+  --red-l:#c84848;
+  --green:#1e5e38;
+  --green-l:#3a9a60;
+  --purple:#7a68c0;
+  --cat1:#cc5a7a;
+  --cat2:#e07040;
+  --cat3:#c09030;
+  --cat4:#4a9aaa;
+}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Cormorant Garamond',Georgia,serif;
+  min-height:100%;
+  overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity:.025;pointer-events:none;z-index:9999;
+}
+
+/* ── SCREENS ── */
+.screen{
+  position:fixed;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;overflow-y:auto;
+  opacity:0;pointer-events:none;
+  transition:opacity .85s ease;
+}
+.screen.active{opacity:1;pointer-events:all}
+
+/* ── BUTTONS ── */
+.btn{
+  display:inline-block;background:transparent;
+  border:1px solid currentColor;color:var(--amber);
+  font-family:'Cormorant Garamond',serif;
+  font-size:1rem;letter-spacing:.12em;text-transform:uppercase;
+  padding:13px 32px;cursor:pointer;
+  transition:background .25s,color .25s;
+}
+.btn:hover{background:var(--amber);color:var(--bg)}
+.btn-primary{
+  width:100%;background:var(--amber);color:var(--bg);border:none;
+  font-family:'Cormorant Garamond',serif;
+  font-size:1.05rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  padding:15px;cursor:pointer;transition:opacity .2s;
+}
+.btn-primary:hover{opacity:.84}
+.btn-ghost{
+  width:100%;background:transparent;border:1px solid var(--border);
+  color:var(--dim2);font-family:'Cormorant Garamond',serif;
+  font-size:.9rem;letter-spacing:.1em;text-transform:uppercase;
+  padding:11px;cursor:pointer;transition:all .2s;
+}
+.btn-ghost:hover{border-color:rgba(255,255,255,.22);color:var(--text)}
+.btn-sm{
+  background:transparent;border:1px solid var(--border);
+  color:var(--dim2);font-family:'DM Mono',monospace;
+  font-size:.7rem;letter-spacing:.07em;
+  padding:6px 13px;cursor:pointer;transition:all .2s;
+}
+.btn-sm:hover{border-color:var(--amber);color:var(--amber)}
+.btn-sm:disabled{opacity:.2;pointer-events:none}
+.btn-share{
+  background:var(--surface2);border:1px solid var(--border);
+  color:var(--text);font-family:'DM Mono',monospace;
+  font-size:.72rem;letter-spacing:.07em;text-transform:uppercase;
+  padding:8px 16px;cursor:pointer;transition:all .2s;
+  white-space:nowrap;
+}
+.btn-share:hover{border-color:var(--amber);color:var(--amber)}
+
+/* ──────────────────────────────
+   INTRO SCREEN
+────────────────────────────── */
+#s-intro{flex-direction:column;text-align:center}
+#s-intro canvas{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.2}
+.intro-inner{
+  position:relative;z-index:1;
+  display:flex;flex-direction:column;align-items:center;
+  gap:16px;max-width:580px;width:100%;
+}
+.eyebrow{
+  font-family:'DM Mono',monospace;font-size:10px;
+  letter-spacing:.32em;text-transform:uppercase;color:var(--dim);font-weight:300;
+}
+.i-title{
+  font-size:clamp(3rem,9vw,5.5rem);
+  font-weight:300;line-height:1.07;letter-spacing:-.02em;
+}
+.i-title em{font-style:italic;color:var(--amber)}
+.tick-wrap{display:flex;flex-direction:column;align-items:center;gap:3px;margin:4px 0}
+#tick{
+  font-family:'DM Mono',monospace;
+  font-size:clamp(3.2rem,11vw,6rem);
+  font-weight:300;color:var(--amber);
+  line-height:1;letter-spacing:-.04em;
+  animation:flicker 2.2s ease-in-out infinite;
+}
+@keyframes flicker{0%,100%{opacity:1}52%{opacity:.62}}
+.tick-sub{font-size:.875rem;color:var(--dim);font-style:italic}
+
+/* ──────────────────────────────
+   INPUT SCREEN
+────────────────────────────── */
+#s-input{align-items:flex-start;justify-content:flex-start;padding:40px 20px}
+.input-inner{max-width:460px;width:100%;margin:0 auto;padding-bottom:40px}
+.input-header{text-align:center;margin-bottom:30px}
+.input-header h2{font-size:2.2rem;font-weight:300;font-style:italic;margin-bottom:6px}
+.input-header p{color:var(--dim2);font-family:'DM Mono',monospace;font-size:.75rem;letter-spacing:.04em}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:26px}
+.fld label{
+  display:block;font-size:9px;letter-spacing:.28em;text-transform:uppercase;
+  color:var(--dim);font-family:'DM Mono',monospace;margin-bottom:5px;
+}
+.fld input[type=number]{
+  background:rgba(255,255,255,.04);border:1px solid var(--border);
+  color:var(--text);font-family:'DM Mono',monospace;
+  font-size:1.8rem;font-weight:300;padding:9px 12px;
+  width:100%;outline:none;transition:border-color .2s;border-radius:2px;
+}
+.fld input[type=number]:focus{border-color:var(--amber)}
+.sec-lbl{
+  display:block;font-size:9px;letter-spacing:.28em;text-transform:uppercase;
+  color:var(--dim);font-family:'DM Mono',monospace;margin-bottom:14px;
+}
+.cat-item{margin-bottom:18px}
+.cat-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
+.cat-name{font-size:.98rem;display:flex;align-items:center;gap:7px}
+.cdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;display:inline-block}
+.cat-v{font-family:'DM Mono',monospace;font-size:.75rem;color:var(--amber)}
+input[type=range]{
+  width:100%;height:2px;background:rgba(255,255,255,.1);
+  border-radius:1px;outline:none;cursor:pointer;
+  -webkit-appearance:none;appearance:none;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:13px;height:13px;
+  border-radius:50%;background:var(--amber);cursor:pointer;
+  box-shadow:0 0 8px rgba(200,120,52,.4);
+}
+.inp-actions{display:flex;flex-direction:column;gap:9px;margin-top:22px}
+
+/* ──────────────────────────────
+   RESULTS SCREEN
+────────────────────────────── */
+#s-results{align-items:flex-start;justify-content:flex-start;padding:20px}
+.results-inner{max-width:920px;width:100%;margin:0 auto;padding-bottom:40px}
+
+.top-bar{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:20px;flex-wrap:wrap;gap:12px;
+  padding-bottom:16px;border-bottom:1px solid var(--border);
+}
+.tbl{display:flex;align-items:center;gap:14px}
+.back-btn{
+  background:none;border:none;color:var(--dim2);font-family:'DM Mono',monospace;
+  font-size:.7rem;letter-spacing:.07em;cursor:pointer;transition:color .2s;padding:0;
+}
+.back-btn:hover{color:var(--amber)}
+#audit-label{font-size:.85rem;color:var(--dim);font-style:italic}
+
+/* Unit toggle */
+.unit-toggle{display:flex;gap:2px;background:rgba(255,255,255,.04);border-radius:3px;padding:3px}
+.unit-btn{
+  font-family:'DM Mono',monospace;font-size:.67rem;letter-spacing:.07em;text-transform:uppercase;
+  padding:5px 10px;cursor:pointer;border-radius:2px;
+  background:transparent;border:none;color:var(--dim);transition:all .2s;
+}
+.unit-btn.on{background:var(--amber);color:var(--bg)}
+
+/* Layout */
+.res-layout{display:flex;gap:36px;align-items:flex-start}
+.hg-col{flex-shrink:0}
+
+/* Phase nav */
+.phase-nav{display:flex;align-items:center;gap:10px;margin-bottom:22px;flex-wrap:wrap;gap:8px}
+.pdots{display:flex;gap:4px}
+.pdot{
+  height:6px;border-radius:3px;cursor:pointer;
+  background:rgba(255,255,255,.14);transition:all .35s;width:6px;
+}
+.pdot.on{width:18px}
+.pdot[data-ph="0"].on{background:var(--amber)}
+.pdot[data-ph="1"].on{background:var(--red-l)}
+.pdot[data-ph="2"].on{background:var(--purple)}
+.pdot[data-ph="3"].on{background:var(--green-l)}
+.ph-name{font-family:'DM Mono',monospace;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim2)}
+
+/* Phase panels */
+.ph-panel{display:none}
+.ph-panel.on{display:block}
+.ph-eyebrow{font-family:'DM Mono',monospace;font-size:.68rem;letter-spacing:.25em;text-transform:uppercase;margin-bottom:10px}
+.ph-title{font-size:clamp(1.6rem,4vw,2.5rem);font-weight:300;line-height:1.14;margin-bottom:11px}
+.ph-title em{font-style:italic}
+.ph-sub{color:var(--dim2);font-size:.93rem;font-style:italic;line-height:1.68;margin-bottom:16px}
+.stats{display:flex;flex-direction:column;gap:0;margin-bottom:18px}
+.stat{
+  display:flex;justify-content:space-between;align-items:baseline;
+  gap:12px;border-bottom:1px solid rgba(255,255,255,.05);padding:7px 0;
+}
+.stat-n{font-size:.86rem;color:var(--dim2);display:flex;align-items:center;gap:6px;line-height:1.3;flex:1}
+.stat-v{font-family:'DM Mono',monospace;font-size:.82rem;white-space:nowrap}
+.live-v{font-family:'DM Mono',monospace;font-size:1.1rem;color:var(--amber);animation:flicker 1.5s ease-in-out infinite}
+.c-amber{color:var(--amber)}
+.c-red{color:var(--red-l)}
+.c-green{color:var(--green-l)}
+.c-purple{color:var(--purple)}
+.c-dim{color:var(--dim2)}
+
+/* ──────────────────────────────
+   WHAT-IF SECTION
+────────────────────────────── */
+.wi-grid{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.wi-row{
+  display:flex;align-items:center;gap:12px;
+  background:rgba(255,255,255,.03);border:1px solid var(--border);
+  border-radius:4px;padding:11px 14px;
+  transition:border-color .25s,background .25s;
+}
+.wi-row.on{border-color:rgba(58,154,96,.28);background:rgba(28,88,50,.08)}
+.wi-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.wi-info{flex:1;min-width:0}
+.wi-name{font-size:.94rem;margin-bottom:2px}
+.wi-per{font-family:'DM Mono',monospace;font-size:.68rem;color:var(--dim)}
+.wi-gain{font-family:'DM Mono',monospace;font-size:.8rem;min-width:60px;text-align:right;transition:color .25s}
+.wi-toggle{
+  width:38px;height:20px;border-radius:10px;cursor:pointer;
+  background:rgba(255,255,255,.1);border:none;
+  position:relative;transition:background .25s;flex-shrink:0;
+}
+.wi-toggle::after{
+  content:'';position:absolute;top:3px;left:3px;
+  width:14px;height:14px;border-radius:50%;
+  background:var(--dim);transition:all .25s;
+}
+.wi-toggle.on{background:var(--green)}
+.wi-toggle.on::after{left:21px;background:var(--green-l)}
+.wi-summary{
+  background:rgba(255,255,255,.03);border:1px solid var(--border);
+  border-radius:3px;padding:10px 14px;
+  font-family:'DM Mono',monospace;font-size:.75rem;
+  color:var(--dim2);transition:color .3s;text-align:center;
+}
+.wi-summary.active{color:var(--green-l);border-color:rgba(58,154,96,.25);background:rgba(28,88,50,.06)}
+
+/* ──────────────────────────────
+   SHARE MODAL
+────────────────────────────── */
+#modal-share{
+  position:fixed;inset:0;background:rgba(0,0,0,.72);
+  display:flex;align-items:center;justify-content:center;
+  z-index:1000;opacity:0;pointer-events:none;
+  transition:opacity .3s;padding:20px;
+}
+#modal-share.on{opacity:1;pointer-events:all}
+.modal-box{
+  background:var(--surface);border:1px solid rgba(255,255,255,.1);
+  border-radius:8px;padding:26px;max-width:560px;width:100%;
+  position:relative;max-height:90vh;overflow-y:auto;
+}
+.modal-box h3{font-size:1.5rem;font-weight:300;font-style:italic;margin-bottom:6px}
+.modal-box .mdesc{color:var(--dim2);font-size:.875rem;margin-bottom:16px;line-height:1.6}
+.modal-close{
+  position:absolute;top:14px;right:16px;
+  background:none;border:none;color:var(--dim);cursor:pointer;
+  font-family:'DM Mono',monospace;font-size:.72rem;transition:color .2s;
+}
+.modal-close:hover{color:var(--text)}
+.card-preview{
+  background:#08070a;border-radius:6px;padding:12px;
+  margin-bottom:16px;border:1px solid rgba(255,255,255,.07);
+}
+.card-preview canvas{display:block;max-width:100%;height:auto;border-radius:3px}
+.modal-actions{display:flex;gap:10px;flex-wrap:wrap}
+.modal-actions button{flex:1;min-width:120px}
+
+/* ── RESPONSIVE ── */
+@media(max-width:660px){
+  .res-layout{flex-direction:column;align-items:center}
+  .hg-col{width:100%;display:flex;justify-content:center}
+  .top-bar{flex-direction:column;align-items:flex-start}
+  .unit-toggle{align-self:flex-start}
+  .tbl{flex-wrap:wrap}
+}
+@media(max-width:400px){.i-title{font-size:2.6rem}}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════
+     INTRO SCREEN
+════════════════════════════ -->
+<div class="screen active" id="s-intro">
+  <canvas id="bg-c"></canvas>
+  <div class="intro-inner">
+    <p class="eyebrow">a life audit</p>
+    <h1 class="i-title">Your time<br>is <em>already</em><br>leaving.</h1>
+    <div class="tick-wrap">
+      <span id="tick">0</span>
+      <span class="tick-sub">seconds slipped away since you opened this</span>
+    </div>
+    <button class="btn" onclick="gotoInput()">Begin — while you still can</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════
+     INPUT SCREEN
+════════════════════════════ -->
+<div class="screen" id="s-input">
+  <div class="input-inner">
+    <div class="input-header">
+      <h2>How are you spending your life?</h2>
+      <p>Enter honestly. This is just arithmetic.</p>
+    </div>
+    <div class="row2">
+      <div class="fld"><label>Your current age</label><input type="number" id="i-age" value="28" min="5" max="99"></div>
+      <div class="fld"><label>Expected lifespan</label><input type="number" id="i-life" value="78" min="40" max="120"></div>
+    </div>
+    <span class="sec-lbl">Daily hours lost to...</span>
+    <div class="cat-item">
+      <div class="cat-top"><div class="cat-name"><span class="cdot" style="background:var(--cat1)"></span>Mindless scrolling &amp; screen time</div><span class="cat-v" id="v-s">2 hrs</span></div>
+      <input type="range" id="r-s" min="0" max="10" step="0.5" value="2" oninput="sl('s',this.value)">
+    </div>
+    <div class="cat-item">
+      <div class="cat-top"><div class="cat-name"><span class="cdot" style="background:var(--cat2)"></span>Unfulfilling work hours</div><span class="cat-v" id="v-w">4 hrs</span></div>
+      <input type="range" id="r-w" min="0" max="12" step="0.5" value="4" oninput="sl('w',this.value)">
+    </div>
+    <div class="cat-item">
+      <div class="cat-top"><div class="cat-name"><span class="cdot" style="background:var(--cat3)"></span>Waiting, commuting &amp; idle time</div><span class="cat-v" id="v-c">1.5 hrs</span></div>
+      <input type="range" id="r-c" min="0" max="6" step="0.5" value="1.5" oninput="sl('c',this.value)">
+    </div>
+    <div class="cat-item">
+      <div class="cat-top"><div class="cat-name"><span class="cdot" style="background:var(--cat4)"></span>Excess sleep (beyond 8 hrs)</div><span class="cat-v" id="v-e">1 hr</span></div>
+      <input type="range" id="r-e" min="0" max="6" step="0.5" value="1" oninput="sl('e',this.value)">
+    </div>
+    <div class="inp-actions">
+      <button class="btn-primary" onclick="showResults()">Show me the truth</button>
+      <button class="btn-ghost" onclick="gotoIntro()">← Back</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════
+     RESULTS SCREEN
+════════════════════════════ -->
+<div class="screen" id="s-results">
+  <div class="results-inner">
+
+    <!-- Top bar -->
+    <div class="top-bar">
+      <div class="tbl">
+        <button class="back-btn" onclick="gotoIntro()">← Life Sand</button>
+        <span id="audit-label" class="c-dim" style="font-style:italic;font-size:.85rem"></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div class="unit-toggle">
+          <button class="unit-btn" onclick="setUnit('days')">Days</button>
+          <button class="unit-btn on" onclick="setUnit('weeks')">Weeks</button>
+          <button class="unit-btn" onclick="setUnit('months')">Months</button>
+          <button class="unit-btn" onclick="setUnit('years')">Years</button>
+        </div>
+        <button class="btn-share" onclick="openShare()">Share ↗</button>
+      </div>
+    </div>
+
+    <!-- Main layout -->
+    <div class="res-layout">
+
+      <!-- Hourglass -->
+      <div class="hg-col">
+        <canvas id="hg-c" width="200" height="340"></canvas>
+      </div>
+
+      <!-- Content -->
+      <div style="flex:1;min-width:0">
+
+        <!-- Phase nav -->
+        <div class="phase-nav">
+          <button class="btn-sm" id="bp" onclick="prevPh()" disabled>←</button>
+          <div class="pdots">
+            <div class="pdot on" data-ph="0" onclick="setPh(0)" title="Urgency"></div>
+            <div class="pdot" data-ph="1" onclick="setPh(1)" title="Regret"></div>
+            <div class="pdot" data-ph="2" onclick="setPh(2)" title="What If?"></div>
+            <div class="pdot" data-ph="3" onclick="setPh(3)" title="Hope"></div>
+          </div>
+          <button class="btn-sm" id="bn" onclick="nextPh()">→</button>
+          <span class="ph-name c-dim" id="ph-name">Urgency</span>
+        </div>
+
+        <!-- ── PHASE 1: URGENCY ── -->
+        <div class="ph-panel on" id="ph-0">
+          <p class="ph-eyebrow c-amber">Phase 1 — Urgency</p>
+          <h2 class="ph-title">You have <em id="yrs-left">—</em> years left.<br>They drain <em>now.</em></h2>
+          <p class="ph-sub">Not someday. Every second you just spent reading this sentence is gone forever. Here is what remains.</p>
+          <div class="stats">
+            <div class="stat"><div class="stat-n">Seconds remaining in your life</div><div class="live-v" id="sec-live">—</div></div>
+            <div class="stat"><div class="stat-n">Time remaining</div><div class="stat-v c-amber" id="u-remain">—</div></div>
+            <div class="stat"><div class="stat-n">Also expressed as</div><div class="stat-v c-dim" id="u-remain-alt">—</div></div>
+            <div class="stat"><div class="stat-n">Productive waking hours left (est.)</div><div class="stat-v" id="u-waking">—</div></div>
+          </div>
+        </div>
+
+        <!-- ── PHASE 2: REGRET ── -->
+        <div class="ph-panel" id="ph-1">
+          <p class="ph-eyebrow c-red">Phase 2 — Regret</p>
+          <h2 class="ph-title">But <em id="w-total">—</em> of those years<br>are already <em>spoken for.</em></h2>
+          <p class="ph-sub">At your current habits, this is how your future has been quietly pre-allocated — before you have lived it.</p>
+          <div class="stats" id="reg-stats"></div>
+          <div class="stat" style="margin-top:4px;border-top:1px solid rgba(255,255,255,.1);padding-top:10px">
+            <div class="stat-n" style="font-weight:500;color:var(--text)">Total pre-consumed future</div>
+            <div class="stat-v c-red" id="reg-total-v">—</div>
+          </div>
+        </div>
+
+        <!-- ── PHASE 3: WHAT IF? ── -->
+        <div class="ph-panel" id="ph-2">
+          <p class="ph-eyebrow c-purple">Phase 3 — What If?</p>
+          <h2 class="ph-title">Toggle each habit.<br>Watch your <em>time shift.</em></h2>
+          <p class="ph-sub">Reclaim just 1 hour from any category. See how the hourglass changes — and how many years appear in the green.</p>
+          <div class="wi-grid" id="wi-grid"></div>
+          <div class="wi-summary" id="wi-summary">Toggle habits above to see what you would reclaim.</div>
+        </div>
+
+        <!-- ── PHASE 4: HOPE ── -->
+        <div class="ph-panel" id="ph-3">
+          <p class="ph-eyebrow c-green">Phase 4 — Hope</p>
+          <h2 class="ph-title">Yet <em id="r-total">—</em> can still<br>be truly <em>yours.</em></h2>
+          <p class="ph-sub">The sand above the neck has not fallen. One hour reclaimed from each habit today changes the shape of everything that follows.</p>
+          <div class="stats" id="hope-stats"></div>
+          <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+            <button class="btn-primary" style="flex:1;min-width:130px" onclick="openShare()">Share my audit</button>
+            <button class="btn-ghost" style="flex:1;min-width:130px" onclick="gotoIntro()">Start over</button>
+          </div>
+        </div>
+
+      </div><!-- /content -->
+    </div><!-- /res-layout -->
+  </div>
+</div>
+
+<!-- ════════════════════════════
+     SHARE MODAL
+════════════════════════════ -->
+<div id="modal-share">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeShare()">✕ close</button>
+    <h3>Your Life Sand Audit</h3>
+    <p class="mdesc">Download this card or screenshot it — a reminder to spend your seconds well.</p>
+    <div class="card-preview"><canvas id="share-c"></canvas></div>
+    <div class="modal-actions">
+      <button class="btn-primary" onclick="downloadCard()">Download PNG</button>
+      <button class="btn-ghost" onclick="closeShare()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════
+     JAVASCRIPT
+════════════════════════════ -->
+<script>
+/* ─── STATE ─── */
+let curPh = 0, curUnit = 'weeks', U = {}, wiState = [false,false,false,false];
+let tickT, liveT, animId, bId, pts = [];
+let hgCtx, hgCv;
+const PH_NAMES = ['Urgency','Regret','What If?','Hope'];
+
+/* ─── SCREEN NAV ─── */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('s-' + id).classList.add('active');
+}
+function gotoIntro() {
+  showScreen('intro');
+  clearInterval(liveT);
+  if (animId) { cancelAnimationFrame(animId); animId = null; }
+  startTick(); bgAnim();
+}
+function gotoInput() {
+  showScreen('input');
+  clearInterval(tickT);
+  cancelAnimationFrame(bId);
+}
+
+/* ─── INTRO TICK ─── */
+let t0 = Date.now();
+function startTick() {
+  clearInterval(tickT); t0 = Date.now();
+  const el = document.getElementById('tick');
+  tickT = setInterval(() => {
+    el.textContent = Math.floor((Date.now() - t0) / 1000).toLocaleString();
+  }, 1000);
+}
+
+/* ─── SLIDER LABELS ─── */
+function sl(k, v) {
+  const n = parseFloat(v);
+  document.getElementById('v-' + k).textContent = n === 1 ? '1 hr' : n + ' hrs';
+}
+
+/* ─── UNIT TOGGLE ─── */
+function setUnit(u) {
+  curUnit = u;
+  document.querySelectorAll('.unit-btn').forEach(b =>
+    b.classList.toggle('on', b.textContent.toLowerCase() === u)
+  );
+  if (U.rem != null) refreshDisplays();
+}
+
+/* ─── FORMAT HELPERS ─── */
+function fmtTime(yrs, unit) {
+  const u = unit || curUnit;
+  if (u === 'days')   return Math.round(yrs * 365.25).toLocaleString() + ' days';
+  if (u === 'weeks')  return Math.round(yrs * 52.18).toLocaleString() + ' weeks';
+  if (u === 'months') return Math.round(yrs * 12).toLocaleString() + ' months';
+  return yrs.toFixed(1) + ' years';
+}
+function fmtAuto(yrs) {
+  if (yrs < 0.08) return Math.round(yrs * 365) + ' days';
+  if (yrs < 1)    return Math.round(yrs * 12) + ' months';
+  return yrs.toFixed(1) + ' years';
+}
+
+/* ─── CALCULATIONS ─── */
+function calc() {
+  const age  = parseInt(document.getElementById('i-age').value)  || 28;
+  const life = parseInt(document.getElementById('i-life').value) || 78;
+  const s = parseFloat(document.getElementById('r-s').value) || 0;
+  const w = parseFloat(document.getElementById('r-w').value) || 0;
+  const c = parseFloat(document.getElementById('r-c').value) || 0;
+  const e = parseFloat(document.getElementById('r-e').value) || 0;
+  const rem = Math.max(0, life - age);
+  const sY = (s/24)*rem, wY = (w/24)*rem, cY = (c/24)*rem, eY = (e/24)*rem;
+  const totalW = sY + wY + cY + eY;
+  const saved = (s>0?1:0)+(w>0?1:0)+(c>0?1:0)+(e>0?1:0);
+  return {
+    age, life, rem,
+    remSec: rem * 365.25 * 86400,
+    s, w, c, e, sY, wY, cY, eY, totalW,
+    saved,
+    reclaimYrs: (saved / 24) * rem,
+    livedF: Math.min(1, age / life),
+    wakingHrsLeft: rem * 365.25 * 16
+  };
+}
+
+/* ─── BUILD PHASE CONTENT ─── */
+function buildRegret() {
+  const cats = [
+    {n:'Mindless scrolling', col:'var(--cat1)', y:U.sY, h:U.s},
+    {n:'Unfulfilling work',  col:'var(--cat2)', y:U.wY, h:U.w},
+    {n:'Waiting & commuting',col:'var(--cat3)', y:U.cY, h:U.c},
+    {n:'Excess sleep',       col:'var(--cat4)', y:U.eY, h:U.e},
+  ];
+  document.getElementById('reg-stats').innerHTML = cats
+    .filter(x => x.h > 0)
+    .map(x => `
+      <div class="stat">
+        <div class="stat-n">
+          <span style="width:6px;height:6px;border-radius:50%;background:${x.col};display:inline-block;flex-shrink:0"></span>
+          ${x.n} · ${x.h} hrs/day
+        </div>
+        <div class="stat-v" style="color:${x.col}">${fmtTime(x.y)} ahead</div>
+      </div>`)
+    .join('') || '<div class="stat"><div class="stat-n c-dim">No habits set — try adjusting the sliders.</div></div>';
+  document.getElementById('reg-total-v').textContent = fmtTime(U.totalW);
+}
+
+function buildHope() {
+  const wakingFree = U.wakingHrsLeft - (U.totalW * 365.25 * 16 / U.rem || 0); // rough
+  document.getElementById('hope-stats').innerHTML = `
+    <div class="stat"><div class="stat-n">Hours reclaimable daily (1 hr per habit category)</div><div class="stat-v c-green">${U.saved} hrs / day</div></div>
+    <div class="stat"><div class="stat-n">Life years gained back starting today</div><div class="stat-v c-green">${fmtTime(U.reclaimYrs,'years')}</div></div>
+    <div class="stat"><div class="stat-n">In ${curUnit}</div><div class="stat-v c-green">${fmtTime(U.reclaimYrs)}</div></div>
+    <div class="stat"><div class="stat-n">Extra intentional weeks unlocked</div><div class="stat-v">${Math.round(U.reclaimYrs * 52.18).toLocaleString()} weeks</div></div>
+  `;
+}
+
+function buildWhatIf() {
+  wiState = [false,false,false,false];
+  const cats = [
+    {n:'Mindless scrolling', col:'var(--cat1)', h:U.s},
+    {n:'Unfulfilling work',  col:'var(--cat2)', h:U.w},
+    {n:'Waiting & commuting',col:'var(--cat3)', h:U.c},
+    {n:'Excess sleep',       col:'var(--cat4)', h:U.e},
+  ];
+  document.getElementById('wi-grid').innerHTML = cats.map((cat, i) => {
+    const gain = (1/24) * U.rem;
+    const perHr = cat.h > 0 ? fmtAuto(gain) : '—';
+    return `
+      <div class="wi-row" id="wi-row-${i}">
+        <span class="wi-dot" style="background:${cat.col}"></span>
+        <div class="wi-info">
+          <div class="wi-name">${cat.n}</div>
+          <div class="wi-per">${cat.h > 0 ? cat.h + ' hrs/day · saves ' + perHr + ' if 1 hr cut' : 'Not set'}</div>
+        </div>
+        <div class="wi-gain c-dim" id="wi-gain-${i}">+0</div>
+        <button class="wi-toggle" id="wi-tog-${i}" onclick="toggleWi(${i})" ${cat.h === 0 ? 'disabled style="opacity:.3"' : ''}></button>
+      </div>`;
+  }).join('');
+  updateWiSum();
+}
+
+function toggleWi(i) {
+  wiState[i] = !wiState[i];
+  const tog = document.getElementById('wi-tog-' + i);
+  const row = document.getElementById('wi-row-' + i);
+  const gain = document.getElementById('wi-gain-' + i);
+  tog.classList.toggle('on', wiState[i]);
+  row.classList.toggle('on', wiState[i]);
+  if (wiState[i]) {
+    gain.textContent = '+' + fmtAuto((1/24) * U.rem);
+    gain.className = 'wi-gain c-green';
+  } else {
+    gain.textContent = '+0';
+    gain.className = 'wi-gain c-dim';
+  }
+  updateWiSum();
+  drawHG(curPh);
+}
+
+function updateWiSum() {
+  const n = wiState.filter(Boolean).length;
+  const yrs = (n / 24) * U.rem;
+  const el = document.getElementById('wi-summary');
+  if (n === 0) {
+    el.textContent = 'Toggle habits above to see what you would reclaim.';
+    el.className = 'wi-summary';
+  } else {
+    el.textContent = `Reclaiming ${n} habit${n > 1 ? 's' : ''} gives you back ${fmtTime(yrs)} of your life.`;
+    el.className = 'wi-summary active';
+  }
+}
+
+/* ─── REFRESH UNIT-DEPENDENT DISPLAYS ─── */
+function refreshDisplays() {
+  if (U.rem == null) return;
+  document.getElementById('u-remain').textContent = fmtTime(U.rem);
+  const alt = {days:'weeks',weeks:'years',months:'weeks',years:'months'}[curUnit];
+  document.getElementById('u-remain-alt').textContent = fmtTime(U.rem, alt);
+  document.getElementById('u-waking').textContent = Math.round(U.wakingHrsLeft).toLocaleString() + ' hrs (est. 16 hrs/day)';
+  buildRegret(); buildHope();
+}
+
+/* ─── SHOW RESULTS ─── */
+function showResults() {
+  U = calc();
+  document.getElementById('audit-label').textContent = `Age ${U.age} · ${Math.round(U.rem)} yrs remaining`;
+  document.getElementById('yrs-left').textContent = Math.round(U.rem);
+  document.getElementById('w-total').textContent = fmtAuto(U.totalW);
+  document.getElementById('r-total').textContent = fmtAuto(U.reclaimYrs);
+  refreshDisplays();
+  buildWhatIf();
+
+  cancelAnimationFrame(bId);
+  showScreen('results');
+  setPh(0);
+  initHG();
+
+  clearInterval(liveT);
+  let sl2 = Math.round(U.remSec);
+  const livEl = document.getElementById('sec-live');
+  livEl.textContent = sl2.toLocaleString();
+  liveT = setInterval(() => { sl2--; livEl.textContent = sl2.toLocaleString(); }, 1000);
+}
+
+/* ─── PHASE NAV ─── */
+function setPh(n) {
+  curPh = n;
+  document.querySelectorAll('.ph-panel').forEach((p, i) => p.classList.toggle('on', i === n));
+  document.querySelectorAll('.pdot').forEach((d, i) => d.classList.toggle('on', i === n));
+  document.getElementById('bp').disabled = n === 0;
+  document.getElementById('bn').disabled = n === 3;
+  document.getElementById('ph-name').textContent = PH_NAMES[n];
+  drawHG(n);
+}
+function nextPh() { if (curPh < 3) setPh(curPh + 1); }
+function prevPh() { if (curPh > 0) setPh(curPh - 1); }
+
+/* ─── HOURGLASS CANVAS ─── */
+function hgPath(ctx, W, H) {
+  const cx = W/2, pad = 10, top = pad, bot = H-pad, mid = H/2;
+  const wide = W*.43, neck = W*.062;
+  ctx.beginPath();
+  ctx.moveTo(cx-wide, top); ctx.lineTo(cx+wide, top);
+  ctx.bezierCurveTo(cx+wide, top+(mid-top)*.54, cx+neck, mid-13, cx+neck, mid);
+  ctx.bezierCurveTo(cx+neck, mid+13, cx+wide, mid+(bot-mid)*.46, cx+wide, bot);
+  ctx.lineTo(cx-wide, bot);
+  ctx.bezierCurveTo(cx-wide, mid+(bot-mid)*.46, cx-neck, mid+13, cx-neck, mid);
+  ctx.bezierCurveTo(cx-neck, mid-13, cx-wide, top+(mid-top)*.54, cx-wide, top);
+  ctx.closePath();
+}
+
+function mkPt(W, mid) {
+  return { x: W/2 + (Math.random()-.5)*W*.09, y: mid-4, vy: .7+Math.random()*1.4, r: .8+Math.random()*1.6, o: .4+Math.random()*.5 };
+}
+
+function initHG() {
+  hgCv = document.getElementById('hg-c');
+  hgCtx = hgCv.getContext('2d');
+  const mob = window.innerWidth < 660;
+  hgCv.width  = mob ? 150 : 200;
+  hgCv.height = mob ? 250 : 340;
+  pts = [];
+  for (let i = 0; i < 14; i++) {
+    const p = mkPt(hgCv.width, hgCv.height / 2);
+    p.y = hgCv.height/2 - Math.random()*26;
+    pts.push(p);
+  }
+  if (animId) cancelAnimationFrame(animId);
+  (function loop() {
+    drawHG(curPh);
+    const mid = hgCv.height / 2;
+    pts.forEach((p, i) => {
+      p.y += p.vy; p.vy += .1;
+      if (p.y > mid + 78) pts[i] = mkPt(hgCv.width, mid);
+    });
+    animId = requestAnimationFrame(loop);
+  })();
+}
+
+function drawHG(ph) {
+  const ctx = hgCtx, cv = hgCv;
+  if (!ctx || !cv || U.rem == null) return;
+  const W = cv.width, H = cv.height, pad = 10;
+  const top = pad, bot = H-pad, mid = H/2, topH = mid-top, botH = bot-mid;
+  ctx.clearRect(0, 0, W, H);
+
+  /* bg */
+  ctx.save(); hgPath(ctx,W,H); ctx.fillStyle='#0b0908'; ctx.fill(); ctx.restore();
+
+  /* bottom — lived life */
+  const lH = Math.min(botH, botH * U.livedF * 1.8);
+  ctx.save(); hgPath(ctx,W,H); ctx.clip();
+  ctx.fillStyle='#1c1208'; ctx.fillRect(0, bot-lH, W, lH);
+  ctx.restore();
+
+  /* top chamber */
+  const bands = [
+    {h: topH*(U.s/24), col:'#5a1828'},
+    {h: topH*(U.w/24), col:'#581e08'},
+    {h: topH*(U.c/24), col:'#2c1e06'},
+    {h: topH*(U.e/24), col:'#0c1820'},
+  ];
+
+  if (ph === 0) {
+    /* URGENCY: full amber */
+    ctx.save(); hgPath(ctx,W,H); ctx.clip();
+    ctx.fillStyle='#5a3008'; ctx.fillRect(0,top,W,topH);
+    ctx.fillStyle='#9a5820'; ctx.fillRect(0,top,W,topH*.62);
+    ctx.fillStyle='#c47830'; ctx.fillRect(0,top,W,topH*.3);
+    ctx.restore();
+  } else {
+    ctx.save(); hgPath(ctx,W,H); ctx.clip();
+    let yp = mid;
+
+    if (ph === 2) {
+      /* WHAT-IF: colored bands with green overlays based on wiState */
+      bands.forEach((b, i) => {
+        if (b.h < .4) return;
+        if (wiState[i]) {
+          ctx.fillStyle = 'rgba(28,88,50,.92)'; ctx.fillRect(0, yp-b.h, W, b.h);
+          ctx.fillStyle = 'rgba(55,160,90,.22)'; ctx.fillRect(0, yp-b.h, W, b.h*.4);
+        } else {
+          ctx.fillStyle = b.col; ctx.fillRect(0, yp-b.h, W, b.h);
+        }
+        yp -= b.h;
+      });
+    } else {
+      /* REGRET / HOPE: standard waste bands */
+      bands.forEach(b => {
+        if (b.h < .4) return;
+        ctx.fillStyle = b.col; ctx.fillRect(0, yp-b.h, W, b.h); yp -= b.h;
+      });
+      /* HOPE: green reclaimable overlay */
+      if (ph === 3) {
+        const rH = Math.min(topH*.55, topH*(U.saved/24)*.9);
+        ctx.fillStyle='rgba(28,88,50,.92)'; ctx.fillRect(0, mid-rH, W, rH);
+        ctx.fillStyle='rgba(55,160,90,.22)'; ctx.fillRect(0, mid-rH, W, rH*.45);
+      }
+    }
+
+    /* amber free portion above all waste */
+    const usedH = bands.reduce((s,b)=>s+b.h, 0);
+    const freeH = topH - usedH;
+    if (freeH > 2) {
+      ctx.fillStyle='#7a3e0a'; ctx.fillRect(0, top, W, freeH*.88);
+      ctx.fillStyle='#b86c28'; ctx.fillRect(0, top, W, freeH*.48);
+    }
+    ctx.restore();
+  }
+
+  /* particles */
+  ctx.save(); hgPath(ctx,W,H); ctx.clip();
+  pts.forEach(p => {
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(195,125,48,${p.o})`; ctx.fill();
+  });
+  ctx.restore();
+
+  /* outline */
+  ctx.save(); hgPath(ctx,W,H);
+  ctx.strokeStyle='rgba(190,115,45,.12)'; ctx.lineWidth=9; ctx.stroke();
+  ctx.strokeStyle='rgba(190,115,45,.26)'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.restore();
+}
+
+/* ─── BG ANIMATION (INTRO) ─── */
+function bgAnim() {
+  cancelAnimationFrame(bId);
+  const cv = document.getElementById('bg-c');
+  const ctx = cv.getContext('2d');
+  cv.width = window.innerWidth; cv.height = window.innerHeight;
+  const W=cv.width, H=cv.height, cx=W/2, cy=H/2;
+  const wide=Math.min(W,H)*.36, neck=wide*.06;
+  const top=cy-H*.36, bot=cy+H*.36;
+  let t=0, bpts=[];
+  for(let i=0;i<10;i++) bpts.push({x:cx+(Math.random()-.5)*neck*3, y:cy+(Math.random()-.5)*20, vy:.6+Math.random()*1.2, r:.7+Math.random()*1.2, o:.3+Math.random()*.4});
+
+  function bPth(){
+    ctx.beginPath();
+    ctx.moveTo(cx-wide,top); ctx.lineTo(cx+wide,top);
+    ctx.bezierCurveTo(cx+wide,top+(cy-top)*.55,cx+neck,cy-13,cx+neck,cy);
+    ctx.bezierCurveTo(cx+neck,cy+13,cx+wide,cy+(bot-cy)*.45,cx+wide,bot);
+    ctx.lineTo(cx-wide,bot);
+    ctx.bezierCurveTo(cx-wide,cy+(bot-cy)*.45,cx-neck,cy+13,cx-neck,cy);
+    ctx.bezierCurveTo(cx-neck,cy-13,cx-wide,top+(cy-top)*.55,cx-wide,top);
+    ctx.closePath();
+  }
+
+  (function loop(){
+    if(!document.getElementById('s-intro').classList.contains('active')) return;
+    ctx.clearRect(0,0,W,H);
+    bPth(); ctx.fillStyle='#110e0a'; ctx.fill();
+    const sl=.42+Math.sin(t*.008)*.1;
+    ctx.save(); bPth(); ctx.clip();
+    ctx.fillStyle='#5a3008'; ctx.fillRect(0,top,W,(cy-top)*sl*.9);
+    ctx.fillStyle='#9a5820'; ctx.fillRect(0,top,W,(cy-top)*sl*.5);
+    ctx.fillStyle='#c47830'; ctx.fillRect(0,top,W,(cy-top)*sl*.26);
+    bpts.forEach(p=>{
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(195,125,48,${p.o})`; ctx.fill();
+      p.y+=p.vy; p.vy+=.09;
+      if(p.y>cy+66){p.x=cx+(Math.random()-.5)*neck*3;p.y=cy-4;p.vy=.6+Math.random()*1.2;}
+    });
+    ctx.restore();
+    bPth(); ctx.strokeStyle=`rgba(190,115,45,${.1+Math.sin(t*.02)*.05})`; ctx.lineWidth=1.5; ctx.stroke();
+    t++; bId=requestAnimationFrame(loop);
+  })();
+}
+
+/* ─── SHARE CARD ─── */
+function openShare() {
+  document.getElementById('modal-share').classList.add('on');
+  buildCard();
+}
+function closeShare() {
+  document.getElementById('modal-share').classList.remove('on');
+}
+function buildCard() {
+  const cv = document.getElementById('share-c');
+  const W=800, H=420; cv.width=W; cv.height=H;
+  const ctx = cv.getContext('2d');
+
+  /* background */
+  ctx.fillStyle='#080507'; ctx.fillRect(0,0,W,H);
+  /* grain */
+  ctx.fillStyle='rgba(255,255,255,.012)';
+  for(let i=0;i<4000;i++) ctx.fillRect(Math.random()*W,Math.random()*H,1,1);
+
+  /* amber accent bar on left */
+  const grad = ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,'rgba(200,120,52,.22)'); grad.addColorStop(1,'rgba(200,120,52,0)');
+  ctx.fillStyle=grad; ctx.fillRect(0,0,3,H);
+
+  /* mini hourglass */
+  const hx=155, hy=H/2, hW=100, hNk=9, hTop=hy-148, hBot=hy+148;
+  function cPth(){
+    ctx.beginPath();
+    ctx.moveTo(hx-hW,hTop); ctx.lineTo(hx+hW,hTop);
+    ctx.bezierCurveTo(hx+hW,hTop+(hy-hTop)*.54,hx+hNk,hy-12,hx+hNk,hy);
+    ctx.bezierCurveTo(hx+hNk,hy+12,hx+hW,hy+(hBot-hy)*.46,hx+hW,hBot);
+    ctx.lineTo(hx-hW,hBot);
+    ctx.bezierCurveTo(hx-hW,hy+(hBot-hy)*.46,hx-hNk,hy+12,hx-hNk,hy);
+    ctx.bezierCurveTo(hx-hNk,hy-12,hx-hW,hTop+(hy-hTop)*.54,hx-hW,hTop);
+    ctx.closePath();
+  }
+  cPth(); ctx.fillStyle='#0b0908'; ctx.fill();
+  const topH = hy-hTop;
+  ctx.save(); cPth(); ctx.clip();
+  /* lived (bottom) */
+  const lH=Math.min(hy-hTop, (hy-hTop)*U.livedF*1.75);
+  ctx.fillStyle='#1c1208'; ctx.fillRect(hx-hW-5,hBot-lH,hW*2+10,lH);
+  /* waste bands (top) */
+  const bds=[{h:topH*(U.s/24),c:'#5a1828'},{h:topH*(U.w/24),c:'#581e08'},{h:topH*(U.c/24),c:'#2c1e06'},{h:topH*(U.e/24),c:'#0c1820'}];
+  let yp=hy; bds.forEach(b=>{ctx.fillStyle=b.c;ctx.fillRect(hx-hW-5,yp-b.h,hW*2+10,b.h);yp-=b.h;});
+  const used=bds.reduce((s,b)=>s+b.h,0), free=topH-used;
+  if(free>0){ctx.fillStyle='#7a3e0a';ctx.fillRect(hx-hW-5,hTop,hW*2+10,free*.88);ctx.fillStyle='#b86c28';ctx.fillRect(hx-hW-5,hTop,hW*2+10,free*.46);}
+  /* hope green */
+  const rH=topH*(U.saved/24)*.88;
+  ctx.fillStyle='rgba(28,88,50,.9)';ctx.fillRect(hx-hW-5,hy-rH,hW*2+10,rH);
+  ctx.restore();
+  cPth(); ctx.strokeStyle='rgba(190,115,45,.22)'; ctx.lineWidth=1.5; ctx.stroke();
+
+  /* divider */
+  ctx.strokeStyle='rgba(255,255,255,.07)'; ctx.lineWidth=.5;
+  ctx.beginPath(); ctx.moveTo(300,36); ctx.lineTo(300,H-36); ctx.stroke();
+
+  /* text */
+  const tx=328;
+  ctx.fillStyle='rgba(200,120,52,.55)';
+  ctx.font='300 9px monospace';
+  ctx.fillText('L I F E  S A N D  A U D I T', tx, 62);
+
+  ctx.fillStyle='#f0e4d0';
+  ctx.font='300 italic 36px Georgia, serif';
+  ctx.fillText('a life audit', tx, 108);
+
+  const lines=[
+    {v:`Age ${U.age}`, l:'', c:'#5a4a38'},
+    {v:`${Math.round(U.rem)} years`, l:'remaining', c:'#c87834'},
+    {v:fmtAuto(U.totalW), l:'already spoken for', c:'#c84848'},
+    {v:fmtAuto(U.reclaimYrs), l:'still reclaimable', c:'#3a9a60'},
+  ];
+  let sy=162;
+  lines.forEach(({v,l,c})=>{
+    ctx.fillStyle=c; ctx.font='400 26px monospace'; ctx.fillText(v, tx, sy);
+    if(l){ctx.fillStyle='#5a4a38';ctx.font='300 12px monospace';ctx.fillText(l, tx, sy+18);}
+    sy += l ? 66 : 46;
+  });
+
+  ctx.fillStyle='rgba(90,74,56,.38)';
+  ctx.font='300 10px monospace';
+  ctx.fillText('lifesand.app  ·  your time is already leaving', tx, H-32);
+}
+
+function downloadCard() {
+  const cv = document.getElementById('share-c');
+  const a = document.createElement('a');
+  a.download = 'life-sand-audit.png';
+  a.href = cv.toDataURL('image/png');
+  a.click();
+}
+
+/* ─── INIT ─── */
+window.addEventListener('DOMContentLoaded', () => {
+  startTick(); bgAnim();
+  window.addEventListener('resize', () => {
+    if (document.getElementById('s-intro').classList.contains('active')) bgAnim();
+  });
+  document.getElementById('modal-share').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal-share')) closeShare();
+  });
+});
+</script>
+</body>
+</html>
